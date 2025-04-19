@@ -1,13 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.utils import timezone
+from django.db.models import Q
 from django.contrib.auth.forms import UserCreationForm
-from .models import Item, Reservation
-from .forms import ItemForm, ReservationForm
+from .models import Item, Message
+from .forms import ItemForm, MessageForm, SignUpForm
+from django.contrib.auth import login
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 def item_list(request):
-    items = Item.objects.filter(is_sold=False)
+    items = Item.objects.filter(is_sold=False).order_by('-created_at')
     return render(request, 'items/item_list.html', {'items': items})
 
 @login_required
@@ -18,7 +20,7 @@ def item_create(request):
             item = form.save(commit=False)
             item.owner = request.user
             item.save()
-            messages.success(request, 'Товар успешно добавлен!')
+            messages.success(request, 'Item added successfully!')
             return redirect('item_list')
     else:
         form = ItemForm()
@@ -68,29 +70,89 @@ def cancel_reservation(request, pk):
     return redirect('my_reservations')
 
 @login_required
-def mark_as_sold(request, pk):
+def mark_sold(request, pk):
     item = get_object_or_404(Item, pk=pk, owner=request.user)
-    
-    # Если товар забронирован, удаляем бронирование
-    if item.is_reserved:
-        Reservation.objects.filter(item=item).delete()
-        item.is_reserved = False
-        item.save()
-    
-    # Отмечаем товар как проданный
     item.is_sold = True
     item.save()
-    messages.success(request, 'Товар отмечен как проданный!')
-    
+    messages.success(request, 'Item marked as sold!')
     return redirect('my_items')
+
+@login_required
+def item_detail(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+    if request.method == 'POST':
+        form = MessageForm(request.POST, request.FILES)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.item = item
+            message.sender = request.user
+            # Если отправитель - владелец товара, получатель - последний отправитель сообщения
+            if request.user == item.owner:
+                last_message = Message.objects.filter(item=item).exclude(sender=request.user).order_by('-created_at').first()
+                if last_message:
+                    message.receiver = last_message.sender
+                else:
+                    messages.error(request, 'No messages to reply to.')
+                    return redirect('item_detail', pk=pk)
+            else:
+                message.receiver = item.owner
+            message.save()
+            messages.success(request, 'Message sent successfully!')
+            return redirect('item_detail', pk=pk)
+    else:
+        form = MessageForm()
+    
+    # Получаем все сообщения, связанные с этим товаром
+    item_messages = Message.objects.filter(item=item).order_by('created_at')
+    
+    return render(request, 'items/item_detail.html', {
+        'item': item,
+        'form': form,
+        'messages': item_messages
+    })
+
+@login_required
+def my_messages(request):
+    # Получаем все сообщения, где пользователь является отправителем или получателем
+    user_messages = Message.objects.filter(
+        Q(sender=request.user) | Q(receiver=request.user)
+    ).order_by('-created_at')
+    
+    return render(request, 'items/my_messages.html', {'messages': user_messages})
 
 def signup(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = SignUpForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('item_list')
+    else:
+        form = SignUpForm()
+    return render(request, 'registration/signup.html', {'form': form})
+
+@login_required
+def item_edit(request, pk):
+    item = get_object_or_404(Item, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        form = ItemForm(request.POST, request.FILES, instance=item)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Регистрация прошла успешно! Теперь вы можете войти.')
-            return redirect('login')
+            messages.success(request, 'Item updated successfully!')
+            return redirect('item_detail', pk=pk)
     else:
-        form = UserCreationForm()
-    return render(request, 'registration/signup.html', {'form': form})
+        form = ItemForm(instance=item)
+    return render(request, 'items/item_form.html', {'form': form})
+
+@login_required
+def toggle_airhall(request, pk):
+    item = get_object_or_404(Item, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        item.is_in_airhall = not item.is_in_airhall
+        if not item.is_in_airhall:
+            item.airhall_image = None
+            item.airhall_location = None
+        item.save()
+        messages.success(request, f'Item {"marked as in" if item.is_in_airhall else "removed from"} Airhall')
+        return redirect('item_detail', pk=pk)
+    return redirect('item_detail', pk=pk)

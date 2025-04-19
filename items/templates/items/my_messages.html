@@ -1,0 +1,40 @@
+{% extends 'items/base.html' %}
+
+{% block title %}My Messages - PoleSharing{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">My Messages</h1>
+
+<div class="row">
+    {% for message in messages %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    {% if message.sender == user %}
+                    To: {{ message.receiver.username }}
+                    {% else %}
+                    From: {{ message.sender.username }}
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">{{ message.item.title }}</h6>
+                <p class="card-text">{{ message.content }}</p>
+                {% if message.image %}
+                <div class="mt-2">
+                    <img src="{{ message.image.url }}" class="img-fluid rounded" alt="Message image" style="max-height: 200px;">
+                </div>
+                {% endif %}
+                <p class="card-text"><small class="text-muted">{{ message.created_at|date:"d.m.Y H:i" }}</small></p>
+                <a href="{% url 'item_detail' message.item.pk %}" class="btn btn-primary">View Item</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">You don't have any messages yet.</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 

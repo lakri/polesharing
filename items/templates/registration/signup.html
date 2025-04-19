@@ -1,21 +1,48 @@
 {% extends 'items/base.html' %}
-{% load crispy_forms_tags %}
 
-{% block title %}Регистрация - PoleSharing{% endblock %}
+{% block title %}Sign Up - PoleSharing{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-body">
-                <h2 class="card-title text-center mb-4">Регистрация</h2>
-                <form method="post">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <button type="submit" class="btn btn-primary w-100 mt-3">Зарегистрироваться</button>
-                </form>
-                <div class="text-center mt-3">
-                    <p>Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="text-center">Sign Up</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        {{ error }}<br>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">Username</label>
+                            <input type="text" name="username" id="id_username" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email</label>
+                            <input type="email" name="email" id="id_email" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_password1" class="form-label">Password</label>
+                            <input type="password" name="password1" id="id_password1" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_password2" class="form-label">Password confirmation</label>
+                            <input type="password" name="password2" id="id_password2" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    <p class="mb-0">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
                 </div>
             </div>
         </div>

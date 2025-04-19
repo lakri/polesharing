@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Непрочитанные сообщения</title>
+</head>
+<body>
+    <h2>У вас есть непрочитанные сообщения</h2>
+    <p>У вас {{ unread_count }} непрочитанных сообщений на сайте PoleSharing.</p>
+    
+    <h3>Список сообщений:</h3>
+    <ul>
+        {% for message in messages %}
+        <li>
+            <strong>От:</strong> {{ message.sender.username }}<br>
+            <strong>Товар:</strong> {{ message.item.title }}<br>
+            <strong>Сообщение:</strong> {{ message.content|truncatechars:100 }}<br>
+            <strong>Дата:</strong> {{ message.created_at|date:"d.m.Y H:i" }}
+        </li>
+        {% endfor %}
+    </ul>
+    
+    <p>
+        <a href="{{ protocol }}://{{ domain }}{% url 'my_messages' %}">
+            Перейти к сообщениям
+        </a>
+    </p>
+</body>
+</html> 

@@ -14,14 +14,15 @@
             {% endif %}
             <div class="card-body">
                 <h5 class="card-title">{{ item.title }}</h5>
-                <p class="card-text">{{ item.description|truncatechars:100 }}</p>
+                <p class="card-text">{{ item.description|truncatewords:20 }}</p>
                 <p class="card-text"><strong>Price:</strong> {{ item.price }} ₾</p>
-                <p class="card-text"><small class="text-muted">Added: {{ item.created_at|date:"d.m.Y" }}</small></p>
-                
-                {% if item.is_sold %}
+                {% if item.is_in_airhall %}
                 <div class="alert alert-info">
-                    <i class="bi bi-check-circle"></i> Sold
+                    <i class="fas fa-warehouse"></i> In Airhall
                 </div>
+                {% endif %}
+                {% if item.is_sold %}
+                <div class="alert alert-warning">Sold</div>
                 {% else %}
                     {% if item.is_reserved %}
                     <div class="alert alert-warning">
@@ -34,16 +35,19 @@
                         <i class="bi bi-check-circle"></i> Available
                     </div>
                     {% endif %}
-                    <a href="{% url 'mark_sold' item.pk %}" class="btn btn-success mt-2">
-                        <i class="bi bi-check-lg"></i> Mark as Sold
-                    </a>
+                    <a href="{% url 'mark_sold' item.pk %}" class="btn btn-warning">Mark as Sold</a>
                 {% endif %}
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'item_detail' item.pk %}" class="btn btn-primary">View Details</a>
+                </div>
             </div>
         </div>
     </div>
     {% empty %}
     <div class="col-12">
-        <div class="alert alert-info">You don't have any items yet.</div>
+        <div class="alert alert-info">You haven't listed any items yet.</div>
     </div>
     {% endfor %}
 </div>

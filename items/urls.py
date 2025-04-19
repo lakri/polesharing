@@ -3,11 +3,11 @@ from . import views
 
 urlpatterns = [
     path('', views.item_list, name='item_list'),
-    path('create/', views.item_create, name='item_create'),
-    path('reserve/<int:pk>/', views.item_reserve, name='item_reserve'),
+    path('item/new/', views.item_create, name='item_create'),
+    path('item/<int:pk>/', views.item_detail, name='item_detail'),
+    path('item/<int:pk>/edit/', views.item_edit, name='item_edit'),
+    path('item/<int:pk>/toggle-airhall/', views.toggle_airhall, name='toggle_airhall'),
     path('my-items/', views.my_items, name='my_items'),
-    path('my-reservations/', views.my_reservations, name='my_reservations'),
-    path('signup/', views.signup, name='signup'),
-    path('cancel-reservation/<int:pk>/', views.cancel_reservation, name='cancel_reservation'),
-    path('mark-sold/<int:pk>/', views.mark_as_sold, name='mark_sold'),
+    path('item/<int:pk>/mark-sold/', views.mark_sold, name='mark_sold'),
+    path('my-messages/', views.my_messages, name='my_messages'),
 ] 
