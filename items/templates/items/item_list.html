@@ -1,0 +1,34 @@
+{% extends 'items/base.html' %}
+
+{% block title %}All Items - PoleSharing{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">All Items</h1>
+
+<div class="row">
+    {% for item in items %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            {% if item.image %}
+            <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.title }}" style="height: 200px; object-fit: cover;">
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ item.title }}</h5>
+                <p class="card-text">{{ item.description|truncatechars:100 }}</p>
+                <p class="card-text"><strong>Price:</strong> {{ item.price }} ₾</p>
+                <p class="card-text"><small class="text-muted">Added: {{ item.created_at|date:"d.m.Y" }}</small></p>
+                {% if item.is_reserved %}
+                <div class="alert alert-warning">Reserved</div>
+                {% else %}
+                <a href="{% url 'item_reserve' item.pk %}" class="btn btn-primary">Reserve</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">No items available yet.</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 

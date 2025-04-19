@@ -1,0 +1,36 @@
+{% extends 'items/base.html' %}
+
+{% block title %}My Reservations - PoleSharing{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">My Reservations</h1>
+
+<div class="row">
+    {% for reservation in reservations %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            {% if reservation.item.image %}
+            <img src="{{ reservation.item.image.url }}" class="card-img-top" alt="{{ reservation.item.title }}" style="height: 200px; object-fit: cover;">
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ reservation.item.title }}</h5>
+                <p class="card-text">{{ reservation.item.description|truncatechars:100 }}</p>
+                <p class="card-text"><strong>Price:</strong> {{ reservation.item.price }} ₾</p>
+                <p class="card-text"><small class="text-muted">Reserved: {{ reservation.created_at|date:"d.m.Y H:i" }}</small></p>
+                <p class="card-text"><small class="text-muted">Valid until: {{ reservation.expires_at|date:"d.m.Y H:i" }}</small></p>
+                {% if reservation.is_expired %}
+                <div class="alert alert-danger">Reservation expired</div>
+                {% else %}
+                <div class="alert alert-success">Active</div>
+                <a href="{% url 'cancel_reservation' reservation.pk %}" class="btn btn-danger">Cancel Reservation</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">You don't have any reservations yet.</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 

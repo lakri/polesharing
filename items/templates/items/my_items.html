@@ -1,0 +1,50 @@
+{% extends 'items/base.html' %}
+
+{% block title %}My Items - PoleSharing{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">My Items</h1>
+
+<div class="row">
+    {% for item in items %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            {% if item.image %}
+            <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.title }}" style="height: 200px; object-fit: cover;">
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ item.title }}</h5>
+                <p class="card-text">{{ item.description|truncatechars:100 }}</p>
+                <p class="card-text"><strong>Price:</strong> {{ item.price }} ₾</p>
+                <p class="card-text"><small class="text-muted">Added: {{ item.created_at|date:"d.m.Y" }}</small></p>
+                
+                {% if item.is_sold %}
+                <div class="alert alert-info">
+                    <i class="bi bi-check-circle"></i> Sold
+                </div>
+                {% else %}
+                    {% if item.is_reserved %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-clock"></i> Reserved
+                        <br>
+                        <small>Until: {{ item.reservation_set.first.expires_at|date:"d.m.Y H:i" }}</small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> Available
+                    </div>
+                    {% endif %}
+                    <a href="{% url 'mark_sold' item.pk %}" class="btn btn-success mt-2">
+                        <i class="bi bi-check-lg"></i> Mark as Sold
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">You don't have any items yet.</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %} 
