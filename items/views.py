@@ -172,14 +172,17 @@ def my_messages(request):
             # Если текущий пользователь - покупатель, собеседник - владелец товара
             conversation_with = item.owner
         
-        # Проверяем, прочитано ли сообщение
-        is_read = last_message.is_read if last_message else True
+        # Проверяем, есть ли непрочитанные сообщения
+        has_unread = item.messages.filter(
+            receiver=request.user,
+            is_read=False
+        ).exists()
         
         items_with_conversations.append({
             'item': item,
             'conversation_with': conversation_with,
             'last_message': last_message,
-            'is_read': is_read
+            'has_unread': has_unread
         })
     
     return render(request, 'items/my_messages.html', {

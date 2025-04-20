@@ -29,7 +29,7 @@
                         {% endif %}
 
                         <div class="mt-3">
-                            <div class="alert {% if conversation.is_read %}alert-secondary{% else %}alert-success{% endif %}">
+                            <div class="alert {% if not conversation.has_unread %}alert-secondary{% else %}alert-success{% endif %}">
                                 <p class="mb-1"><strong>Conversation with:</strong></p>
                                 {% if conversation.item.owner == request.user %}
                                     <p class="mb-0"><i class="fas fa-user fa-sm"></i> {{ conversation.conversation_with.username }}</p>
@@ -37,7 +37,7 @@
                                     <p class="mb-0"><i class="fas fa-user fa-sm"></i> {{ conversation.item.owner.username }}</p>
                                 {% endif %}
                                 <small class="text-muted">Last message: {{ conversation.last_message.created_at|date:"d.m.Y H:i" }}</small>
-                                {% if not conversation.is_read %}
+                                {% if conversation.has_unread %}
                                     <span class="badge bg-success float-end">New</span>
                                 {% endif %}
                             </div>
