@@ -8,9 +8,23 @@ from .models import Item, Message
 from .forms import ItemForm, MessageForm, SignUpForm
 from django.contrib.auth import login
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from .analytics import (
+    track_user_registration,
+    track_item_creation,
+    track_item_sold,
+    track_first_message,
+    track_airhall_status,
+    track_item_view,
+    track_message_sent,
+    track_category_stats
+)
 
 def item_list(request):
     items = Item.objects.filter(is_sold=False).order_by('-created_at')
+    
+    # Отправляем статистику по категориям
+    track_category_stats()
+    
     return render(request, 'items/item_list.html', {'items': items})
 
 @login_required
@@ -19,10 +33,11 @@ def item_create(request):
         form = ItemForm(request.POST, request.FILES)
         if form.is_valid():
             item = form.save(commit=False)
-            item.owner = request.user
+            item.seller = request.user
             item.save()
-            messages.success(request, 'Item added successfully!')
-            return redirect('item_list')
+            # Отслеживаем создание товара
+            track_item_creation(item)
+            return redirect('item_detail', pk=item.pk)
     else:
         form = ItemForm()
     return render(request, 'items/item_form.html', {'form': form})
@@ -72,48 +87,31 @@ def cancel_reservation(request, pk):
 
 @login_required
 def mark_sold(request, pk):
-    item = get_object_or_404(Item, pk=pk, owner=request.user)
-    item.is_sold = True
-    item.save()
-    messages.success(request, 'Item marked as sold!')
-    return redirect('my_items')
+    item = get_object_or_404(Item, pk=pk)
+    if request.user == item.seller:
+        item.is_sold = True
+        item.save()
+        # Отслеживаем продажу товара
+        track_item_sold(item)
+        messages.success(request, 'Item marked as sold!')
+    return redirect('item_detail', pk=pk)
 
 @login_required
 def item_detail(request, pk):
     item = get_object_or_404(Item, pk=pk)
     
-    # Определяем собеседника
-    if request.user == item.owner:
-        # Если текущий пользователь - владелец, ищем последнее сообщение от покупателя
-        last_message = Message.objects.filter(
+    # Увеличиваем счетчик просмотров и отправляем событие
+    item.increment_views()
+    track_item_view(item, request.user)
+    
+    # Получаем сообщения только для текущего пользователя
+    if request.user.is_authenticated:
+        messages = Message.objects.filter(
             Q(sender=request.user) | Q(receiver=request.user),
             item=item
-        ).exclude(sender=request.user).order_by('-created_at').first()
-        
-        if last_message:
-            conversation_with = last_message.sender
-        else:
-            conversation_with = None
-    else:
-        # Если текущий пользователь - покупатель, собеседник - владелец товара
-        conversation_with = item.owner
-    
-    # Получаем сообщения только с выбранным собеседником
-    if conversation_with:
-        item_messages = Message.objects.filter(
-            Q(sender=request.user, receiver=conversation_with) | 
-            Q(sender=conversation_with, receiver=request.user),
-            item=item
         ).order_by('created_at')
-        
-        # Помечаем все сообщения как прочитанные
-        Message.objects.filter(
-            item=item,
-            receiver=request.user,
-            is_read=False
-        ).update(is_read=True)
     else:
-        item_messages = Message.objects.none()
+        messages = None
     
     if request.method == 'POST':
         form = MessageForm(request.POST, request.FILES)
@@ -121,28 +119,36 @@ def item_detail(request, pk):
             message = form.save(commit=False)
             message.item = item
             message.sender = request.user
-            message.is_system = False
             
-            if conversation_with:
-                message.receiver = conversation_with
-                message.save()
-                messages.success(request, 'Message sent successfully!')
-                return redirect('item_detail', pk=pk)
+            # Определяем получателя сообщения
+            if request.user == item.seller:
+                # Если отправитель - продавец, получатель - последний отправитель
+                last_message = Message.objects.filter(item=item).exclude(sender=request.user).last()
+                if last_message:
+                    message.receiver = last_message.sender
             else:
-                messages.error(request, 'No conversation partner found.')
-                return redirect('item_detail', pk=pk)
+                # Если отправитель - покупатель, получатель - продавец
+                message.receiver = item.seller
+            
+            message.save()
+            
+            # Отслеживаем отправку сообщения
+            track_message_sent(message)
+            
+            # Проверяем, первое ли это сообщение по товару
+            message_count = Message.objects.filter(item=item).count()
+            if message_count == 1:
+                track_first_message(item, message)
+            
+            messages.success(request, 'Message sent successfully!')
+            return redirect('item_detail', pk=pk)
     else:
         form = MessageForm()
     
-    # Проверяем, есть ли сообщения для отображения формы
-    has_messages = item_messages.exists()
-    
     return render(request, 'items/item_detail.html', {
         'item': item,
-        'form': form,
-        'messages': item_messages,
-        'conversation_with': conversation_with,
-        'has_messages': has_messages
+        'messages': messages,
+        'form': form
     })
 
 @login_required
@@ -194,11 +200,13 @@ def signup(request):
         form = SignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
+            # Отслеживаем регистрацию пользователя
+            track_user_registration(user)
             login(request, user)
             return redirect('item_list')
     else:
         form = SignUpForm()
-    return render(request, 'registration/signup.html', {'form': form})
+    return render(request, 'items/signup.html', {'form': form})
 
 @login_required
 def item_edit(request, pk):
@@ -215,15 +223,38 @@ def item_edit(request, pk):
 
 @login_required
 def toggle_airhall(request, pk):
-    item = get_object_or_404(Item, pk=pk, owner=request.user)
-    if request.method == 'POST':
-        item.is_in_airhall = not item.is_in_airhall
-        if not item.is_in_airhall:
-            item.airhall_image = None
-            item.airhall_location = None
-        item.save()
-        messages.success(request, f'Item {"marked as in" if item.is_in_airhall else "removed from"} Airhall')
+    item = get_object_or_404(Item, pk=pk)
+    if request.user != item.owner:
+        messages.error(request, 'You do not have permission to modify this item.')
         return redirect('item_detail', pk=pk)
+    
+    if request.method == 'POST':
+        if not item.is_in_airhall:
+            # Получаем данные из формы
+            airhall_image = request.FILES.get('airhall_image')
+            airhall_location = request.POST.get('airhall_location')
+            
+            if not airhall_image or not airhall_location:
+                messages.error(request, 'Please provide both an image and location for the item in airhall.')
+                return redirect('item_detail', pk=pk)
+            
+            # Обновляем данные товара
+            item.airhall_image = airhall_image
+            item.airhall_location = airhall_location
+            item.is_in_airhall = True
+            item.save()
+            
+            # Отслеживаем изменение статуса airhall
+            track_airhall_status(item, True)
+            messages.success(request, 'Item has been marked as in airhall.')
+        else:
+            item.is_in_airhall = False
+            item.save()
+            
+            # Отслеживаем изменение статуса airhall
+            track_airhall_status(item, False)
+            messages.success(request, 'Item has been removed from airhall.')
+    
     return redirect('item_detail', pk=pk)
 
 @login_required
@@ -231,3 +262,55 @@ def toggle_airhall(request, pk):
 def user_list(request):
     users = User.objects.all().order_by('username')
     return render(request, 'items/user_list.html', {'users': users})
+
+def send_message(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+    if request.method == 'POST':
+        form = MessageForm(request.POST, request.FILES)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.item = item
+            message.sender = request.user
+            
+            # Определяем получателя сообщения
+            if request.user == item.seller:
+                # Если отправитель - продавец, получатель - последний отправитель
+                last_message = Message.objects.filter(item=item).exclude(sender=request.user).last()
+                if last_message:
+                    message.receiver = last_message.sender
+            else:
+                # Если отправитель - покупатель, получатель - продавец
+                message.receiver = item.seller
+            
+            message.save()
+            
+            # Проверяем, первое ли это сообщение по товару
+            message_count = Message.objects.filter(item=item).count()
+            if message_count == 1:
+                track_first_message(item, message)
+            
+            messages.success(request, 'Message sent successfully!')
+            return redirect('item_detail', pk=pk)
+    else:
+        form = MessageForm()
+    return render(request, 'items/send_message.html', {'form': form, 'item': item})
+
+def mark_in_airhall(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+    if request.user == item.seller:
+        item.is_in_airhall = True
+        item.save()
+        # Отслеживаем изменение статуса airhall
+        track_airhall_status(item, True)
+        messages.success(request, 'Item marked as in airhall!')
+    return redirect('item_detail', pk=pk)
+
+def remove_from_airhall(request, pk):
+    item = get_object_or_404(Item, pk=pk)
+    if request.user == item.seller:
+        item.is_in_airhall = False
+        item.save()
+        # Отслеживаем изменение статуса airhall
+        track_airhall_status(item, False)
+        messages.success(request, 'Item removed from airhall!')
+    return redirect('item_detail', pk=pk)

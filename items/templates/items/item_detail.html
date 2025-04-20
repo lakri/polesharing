@@ -19,8 +19,14 @@
                             <a href="{% url 'item_edit' item.pk %}" class="btn btn-outline-dark btn-sm">
                                 <i class="fas fa-edit"></i> Edit
                             </a>
-                            <form method="post" action="{% url 'toggle_airhall' item.pk %}" class="d-inline">
+                            <form method="post" action="{% url 'toggle_airhall' item.pk %}" class="d-inline" enctype="multipart/form-data">
                                 {% csrf_token %}
+                                {% if not item.is_in_airhall %}
+                                <div class="d-inline-block">
+                                    <input type="file" class="form-control form-control-sm d-inline-block w-auto" name="airhall_image" accept="image/*" required>
+                                    <input type="text" class="form-control form-control-sm d-inline-block w-auto" name="airhall_location" placeholder="Location in airhall" required>
+                                </div>
+                                {% endif %}
                                 <button type="submit" class="btn {% if item.is_in_airhall %}btn-success{% else %}btn-outline-success{% endif %} btn-sm ms-2">
                                     <i class="fas fa-store"></i> {% if item.is_in_airhall %}Remove from Airhall{% else %}Mark as in Airhall{% endif %}
                                 </button>
@@ -51,14 +57,6 @@
                     
                     {% if item.is_sold %}
                         <div class="alert alert-dark">This item has been sold</div>
-                    {% else %}
-                        {% if user.is_authenticated and user != item.owner %}
-                        <form method="post" enctype="multipart/form-data">
-                            {% csrf_token %}
-                            {{ form|crispy }}
-                            <button type="submit" class="btn btn-dark mt-3">Send Message</button>
-                        </form>
-                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -88,26 +86,19 @@
                                 </div>
                             </div>
                             {% endfor %}
-                            
-                            {% if conversation_with %}
-                                <form method="post" enctype="multipart/form-data" class="mt-4">
-                                    {% csrf_token %}
-                                    {{ form|crispy }}
-                                    <button type="submit" class="btn btn-dark mt-3">Send Message</button>
-                                </form>
-                            {% endif %}
                         {% else %}
                             <p class="text-muted">No messages yet.</p>
-                            {% if user != item.owner %}
-                                <form method="post" enctype="multipart/form-data" class="mt-4">
-                                    {% csrf_token %}
-                                    {{ form|crispy }}
-                                    <button type="submit" class="btn btn-dark mt-3">Send Message</button>
-                                </form>
-                            {% endif %}
+                        {% endif %}
+                        
+                        {% if not item.is_sold %}
+                            <form method="post" enctype="multipart/form-data" class="mt-4">
+                                {% csrf_token %}
+                                {{ form|crispy }}
+                                <button type="submit" class="btn btn-dark mt-3">Send Message</button>
+                            </form>
                         {% endif %}
                     {% else %}
-                        <p class="text-muted">Please <a href="{% url 'login' %}" class="text-dark">login</a> to view messages.</p>
+                        <p class="text-muted">Please <a href="{% url 'login' %}">login</a> to view and send messages.</p>
                     {% endif %}
                 </div>
             </div>

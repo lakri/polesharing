@@ -166,3 +166,12 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# Amplitude Analytics
+AMPLITUDE_API_KEY = 'YOUR_API_KEY_HERE'
+
+# Try to import local settings
+try:
+    from .local_settings import *
+except ImportError:
+    pass

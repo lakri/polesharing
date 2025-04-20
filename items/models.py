@@ -5,11 +5,19 @@ from PIL import Image
 import pillow_heif
 import os
 from django.core.exceptions import ValidationError
+from django.db.models import Q
+
+CATEGORY_CHOICES = [
+    ('clothes', 'Одежда'),
+    ('shoes', 'Обувь'),
+    ('grip', 'Средства для сцепления'),
+    ('other', 'Другое')
+]
 
 class Item(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
-    image = models.ImageField(upload_to='items/')
+    image = models.ImageField(upload_to='items/', null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -17,6 +25,8 @@ class Item(models.Model):
     is_in_airhall = models.BooleanField(default=False)
     airhall_image = models.ImageField(upload_to='airhall_items/', null=True, blank=True)
     airhall_location = models.CharField(max_length=200, null=True, blank=True)
+    category = models.CharField(max_length=100, choices=CATEGORY_CHOICES, default='other')
+    views = models.PositiveIntegerField(default=0)
 
     def save(self, *args, **kwargs):
         # Если товар помечен как находящийся в airhall, проверяем наличие фотографии
@@ -52,6 +62,11 @@ class Item(models.Model):
 
     def __str__(self):
         return self.title
+
+    def increment_views(self):
+        """Увеличивает счетчик просмотров"""
+        self.views += 1
+        self.save(update_fields=['views'])
 
 class Message(models.Model):
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='messages')

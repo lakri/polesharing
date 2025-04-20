@@ -67,6 +67,21 @@
         .message-bubble.bg-light {
             margin-right: auto;
         }
+        .nav-link.active {
+            background-color: #495057;
+            border-radius: 4px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+        }
+        .nav-link:not(.active):hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .nav-link i {
+            margin-right: 5px;
+            transition: color 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -79,21 +94,36 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'item_list' %}">Home</a>
+                        <a class="nav-link {% if request.path == '/' or request.path == '/items/' %}active{% endif %}" 
+                           href="{% url 'item_list' %}">
+                            <i class="fas fa-home"></i> Home
+                        </a>
                     </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'item_create' %}">Add Item</a>
+                        <a class="nav-link {% if request.path == '/items/create/' %}active{% endif %}" 
+                           href="{% url 'item_create' %}">
+                            <i class="fas fa-plus"></i> Add Item
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'my_items' %}">My Items</a>
+                        <a class="nav-link {% if request.path == '/items/my-items/' %}active{% endif %}" 
+                           href="{% url 'my_items' %}">
+                            <i class="fas fa-box"></i> My Items
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'my_messages' %}">My Messages</a>
+                        <a class="nav-link {% if request.path == '/items/my-messages/' %}active{% endif %}" 
+                           href="{% url 'my_messages' %}">
+                            <i class="fas fa-envelope"></i> My Messages
+                        </a>
                     </li>
                     {% if user.is_superuser %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'user_list' %}">Users</a>
+                        <a class="nav-link {% if request.path == '/items/users/' %}active{% endif %}" 
+                           href="{% url 'user_list' %}">
+                            <i class="fas fa-users"></i> Users
+                        </a>
                     </li>
                     {% endif %}
                     {% endif %}
@@ -104,14 +134,22 @@
                         <span class="nav-link">Hello, {{ user.username }}!</span>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                        <a class="nav-link" href="{% url 'logout' %}">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                        <a class="nav-link {% if request.path == '/accounts/login/' %}active{% endif %}" 
+                           href="{% url 'login' %}">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'signup' %}">Sign Up</a>
+                        <a class="nav-link {% if request.path == '/accounts/signup/' %}active{% endif %}" 
+                           href="{% url 'signup' %}">
+                            <i class="fas fa-user-plus"></i> Sign Up
+                        </a>
                     </li>
                     {% endif %}
                 </ul>
@@ -134,6 +172,70 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Amplitude Analytics -->
+    <script type="text/javascript">
+        (function(e,t){var n=e.amplitude||{_q:[],_iq:{}};var r=t.createElement("script")
+        ;r.type="text/javascript";r.async=true
+        ;r.src="https://cdn.amplitude.com/libs/amplitude-8.10.0-min.js.gz"
+        ;r.onload=function(){e.amplitude.runQueuedFunctions()}
+        ;var i=t.getElementsByTagName("script")[0];i.parentNode.insertBefore(r,i)
+        ;function s(e,t){e.prototype[t]=function(){
+        this._q.push([t].concat(Array.prototype.slice.call(arguments,0)));return this}}
+        var o=function(){this._q=[];return this}
+        ;var a=["add","append","clearAll","prepend","set","setOnce","unset"]
+        ;for(var u=0;u<a.length;u++){s(o,a[u])}n.Identify=o;var c=function(){
+        this._q=[];return this}
+        ;var l=["setProductId","setQuantity","setPrice","setRevenueType","setEventProperties"]
+        ;for(var p=0;p<l.length;p++){s(c,l[p])}n.Revenue=c
+        ;var d=["init","logEvent","logRevenue","setUserId","setUserProperties","setOptOut","setVersionName","setDomain","setDeviceId","enableTracking","setGlobalUserProperties","identify","clearUserProperties","setGroup","logRevenueV2","regenerateDeviceId","groupIdentify","onInit","logEventWithTimestamp","logEventWithGroups","setSessionId","resetSessionId"]
+        ;function v(e){function t(t){e[t]=function(){
+        e._q.push([t].concat(Array.prototype.slice.call(arguments,0)))}}
+        for(var n=0;n<d.length;n++){t(d[n])}}v(n);n.getInstance=function(e){
+        e=(!e||e.length===0?"$default_instance":e).toLowerCase()
+        ;if(!n._iq.hasOwnProperty(e)){n._iq[e]={_q:[]};v(n._iq[e])}return n._iq[e]}
+        ;e.amplitude=n})(window,document);
+
+        // Initialize Amplitude with your API key
+        amplitude.init("YOUR_API_KEY");
+
+        // Track page views
+        amplitude.logEvent('page_view', {
+            'page_url': window.location.href,
+            'page_title': document.title
+        });
+
+        // Track user authentication status
+        {% if user.is_authenticated %}
+        amplitude.setUserId('{{ user.id }}');
+        amplitude.logEvent('user_logged_in', {
+            'username': '{{ user.username }}'
+        });
+        {% else %}
+        amplitude.logEvent('user_not_logged_in');
+        {% endif %}
+
+        // Track item interactions
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('.btn-primary, .btn-outline-primary')) {
+                const buttonText = e.target.textContent.trim();
+                amplitude.logEvent('button_click', {
+                    'button_text': buttonText,
+                    'page_url': window.location.href
+                });
+            }
+        });
+
+        // Track form submissions
+        document.addEventListener('submit', function(e) {
+            if (e.target.matches('form')) {
+                const formId = e.target.id || 'unknown_form';
+                amplitude.logEvent('form_submit', {
+                    'form_id': formId,
+                    'page_url': window.location.href
+                });
+            }
+        });
+    </script>
     <script>
         // Автоматическое закрытие сообщений через 5 секунд
         document.addEventListener('DOMContentLoaded', function() {
