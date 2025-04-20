@@ -3,38 +3,58 @@
 {% block title %}My Messages - PoleSharing{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">My Messages</h1>
-
-<div class="row">
-    {% for message in messages %}
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    {% if message.sender == user %}
-                    To: {{ message.receiver.username }}
-                    {% else %}
-                    From: {{ message.sender.username }}
+<div class="container mt-4">
+    <h2 class="mb-4"><i class="fas fa-envelope fa-sm"></i> My Messages</h2>
+    
+    {% if items_with_conversations %}
+        <div class="row">
+            {% for conversation in items_with_conversations %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    {% if conversation.item.image %}
+                    <img src="{{ conversation.item.image.url }}" class="card-img-top" alt="{{ conversation.item.title }}" style="height: 200px; object-fit: cover;">
                     {% endif %}
-                </h5>
-            </div>
-            <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">{{ message.item.title }}</h6>
-                <p class="card-text">{{ message.content }}</p>
-                {% if message.image %}
-                <div class="mt-2">
-                    <img src="{{ message.image.url }}" class="img-fluid rounded" alt="Message image" style="max-height: 200px;">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-box fa-sm"></i> {{ conversation.item.title }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">{{ conversation.item.description|truncatewords:20 }}</p>
+                        <p class="card-text"><strong><i class="fas fa-tag fa-sm"></i> Price:</strong> {{ conversation.item.price }} ₾</p>
+                        <p class="card-text"><small class="text-muted"><i class="fas fa-user fa-sm"></i> Seller: {{ conversation.item.owner.username }}</small></p>
+                        
+                        {% if conversation.item.is_sold %}
+                            <div class="alert alert-dark"><i class="fas fa-check-circle fa-sm"></i> This item has been sold</div>
+                        {% endif %}
+
+                        <div class="mt-3">
+                            <div class="alert {% if conversation.is_read %}alert-secondary{% else %}alert-success{% endif %}">
+                                <p class="mb-1"><strong>Conversation with:</strong></p>
+                                {% if conversation.item.owner == request.user %}
+                                    <p class="mb-0"><i class="fas fa-user fa-sm"></i> {{ conversation.conversation_with.username }}</p>
+                                {% else %}
+                                    <p class="mb-0"><i class="fas fa-user fa-sm"></i> {{ conversation.item.owner.username }}</p>
+                                {% endif %}
+                                <small class="text-muted">Last message: {{ conversation.last_message.created_at|date:"d.m.Y H:i" }}</small>
+                                {% if not conversation.is_read %}
+                                    <span class="badge bg-success float-end">New</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <a href="{% url 'item_detail' conversation.item.pk %}" class="btn btn-dark">
+                            <i class="fas fa-comments fa-sm"></i> View Conversation
+                        </a>
+                    </div>
                 </div>
-                {% endif %}
-                <p class="card-text"><small class="text-muted">{{ message.created_at|date:"d.m.Y H:i" }}</small></p>
-                <a href="{% url 'item_detail' message.item.pk %}" class="btn btn-primary">View Item</a>
             </div>
+            {% endfor %}
         </div>
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">You don't have any messages yet.</div>
-    </div>
-    {% endfor %}
+    {% else %}
+        <div class="alert alert-secondary">
+            <p class="mb-0"><i class="fas fa-inbox fa-sm"></i> You have no messages yet.</p>
+        </div>
+    {% endif %}
 </div>
 {% endblock %} 

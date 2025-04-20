@@ -55,12 +55,13 @@ class Item(models.Model):
 
 class Message(models.Model):
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages', null=True, blank=True)
+    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages', null=True, blank=True)
     content = models.TextField()
-    image = models.ImageField(upload_to='messages/', null=True, blank=True)
+    image = models.ImageField(upload_to='message_images/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    is_system = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-created_at']
@@ -95,4 +96,4 @@ class Message(models.Model):
                 print(f"Ошибка при конвертации HEIC: {str(e)}")
 
     def __str__(self):
-        return f"Message from {self.sender.username} to {self.receiver.username} about {self.item.title}"
+        return f"Message about {self.item.title}"

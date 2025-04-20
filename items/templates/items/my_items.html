@@ -3,52 +3,57 @@
 {% block title %}My Items - PoleSharing{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">My Items</h1>
-
-<div class="row">
-    {% for item in items %}
-    <div class="col-md-4 mb-4">
-        <div class="card h-100">
-            {% if item.image %}
-            <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.title }}" style="height: 200px; object-fit: cover;">
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">{{ item.title }}</h5>
-                <p class="card-text">{{ item.description|truncatewords:20 }}</p>
-                <p class="card-text"><strong>Price:</strong> {{ item.price }} ₾</p>
-                {% if item.is_in_airhall %}
-                <div class="alert alert-info">
-                    <i class="fas fa-warehouse"></i> In Airhall
-                </div>
-                {% endif %}
-                {% if item.is_sold %}
-                <div class="alert alert-warning">Sold</div>
-                {% else %}
-                    {% if item.is_reserved %}
-                    <div class="alert alert-warning">
-                        <i class="bi bi-clock"></i> Reserved
-                        <br>
-                        <small>Until: {{ item.reservation_set.first.expires_at|date:"d.m.Y H:i" }}</small>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> Available
-                    </div>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Items</h2>
+        <a href="{% url 'item_create' %}" class="btn btn-dark">
+            <i class="fas fa-plus"></i> Add New Item
+        </a>
+    </div>
+    
+    {% if items %}
+        <div class="row">
+            {% for item in items %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    {% if item.image %}
+                    <img src="{{ item.image.url }}" class="card-img-top" alt="{{ item.title }}" style="height: 200px; object-fit: cover;">
                     {% endif %}
-                    <a href="{% url 'mark_sold' item.pk %}" class="btn btn-warning">Mark as Sold</a>
-                {% endif %}
-            </div>
-            <div class="card-footer">
-                <div class="d-grid gap-2">
-                    <a href="{% url 'item_detail' item.pk %}" class="btn btn-primary">View Details</a>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ item.title }}</h5>
+                        <p class="card-text">{{ item.description|truncatewords:20 }}</p>
+                        <p class="card-text"><strong>Price:</strong> {{ item.price }} ₾</p>
+                        
+                        {% if item.is_in_airhall %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-warehouse"></i> In Airhall
+                            {% if item.airhall_location %}
+                                <br><small>Location: {{ item.airhall_location }}</small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        {% if item.is_sold %}
+                        <div class="alert alert-dark">Sold</div>
+                        {% else %}
+                        <div class="btn-group w-100">
+                            <a href="{% url 'item_detail' item.pk %}" class="btn btn-outline-dark">View</a>
+                            <a href="{% url 'item_edit' item.pk %}" class="btn btn-outline-dark">Edit</a>
+                            <form method="post" action="{% url 'mark_sold' item.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-dark">Mark as Sold</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">You haven't listed any items yet.</div>
-    </div>
-    {% endfor %}
+    {% else %}
+        <div class="alert alert-secondary">
+            <p class="mb-0">You haven't added any items yet.</p>
+        </div>
+    {% endif %}
 </div>
 {% endblock %} 

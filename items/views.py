@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, F
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from .models import Item, Message
 from .forms import ItemForm, MessageForm, SignUpForm
 from django.contrib.auth import login
@@ -80,45 +81,110 @@ def mark_sold(request, pk):
 @login_required
 def item_detail(request, pk):
     item = get_object_or_404(Item, pk=pk)
+    
+    # Определяем собеседника
+    if request.user == item.owner:
+        # Если текущий пользователь - владелец, ищем последнее сообщение от покупателя
+        last_message = Message.objects.filter(
+            Q(sender=request.user) | Q(receiver=request.user),
+            item=item
+        ).exclude(sender=request.user).order_by('-created_at').first()
+        
+        if last_message:
+            conversation_with = last_message.sender
+        else:
+            conversation_with = None
+    else:
+        # Если текущий пользователь - покупатель, собеседник - владелец товара
+        conversation_with = item.owner
+    
+    # Получаем сообщения только с выбранным собеседником
+    if conversation_with:
+        item_messages = Message.objects.filter(
+            Q(sender=request.user, receiver=conversation_with) | 
+            Q(sender=conversation_with, receiver=request.user),
+            item=item
+        ).order_by('created_at')
+        
+        # Помечаем все сообщения как прочитанные
+        Message.objects.filter(
+            item=item,
+            receiver=request.user,
+            is_read=False
+        ).update(is_read=True)
+    else:
+        item_messages = Message.objects.none()
+    
     if request.method == 'POST':
         form = MessageForm(request.POST, request.FILES)
         if form.is_valid():
             message = form.save(commit=False)
             message.item = item
             message.sender = request.user
-            # Если отправитель - владелец товара, получатель - последний отправитель сообщения
-            if request.user == item.owner:
-                last_message = Message.objects.filter(item=item).exclude(sender=request.user).order_by('-created_at').first()
-                if last_message:
-                    message.receiver = last_message.sender
-                else:
-                    messages.error(request, 'No messages to reply to.')
-                    return redirect('item_detail', pk=pk)
+            message.is_system = False
+            
+            if conversation_with:
+                message.receiver = conversation_with
+                message.save()
+                messages.success(request, 'Message sent successfully!')
+                return redirect('item_detail', pk=pk)
             else:
-                message.receiver = item.owner
-            message.save()
-            messages.success(request, 'Message sent successfully!')
-            return redirect('item_detail', pk=pk)
+                messages.error(request, 'No conversation partner found.')
+                return redirect('item_detail', pk=pk)
     else:
         form = MessageForm()
     
-    # Получаем все сообщения, связанные с этим товаром
-    item_messages = Message.objects.filter(item=item).order_by('created_at')
+    # Проверяем, есть ли сообщения для отображения формы
+    has_messages = item_messages.exists()
     
     return render(request, 'items/item_detail.html', {
         'item': item,
         'form': form,
-        'messages': item_messages
+        'messages': item_messages,
+        'conversation_with': conversation_with,
+        'has_messages': has_messages
     })
 
 @login_required
 def my_messages(request):
-    # Получаем все сообщения, где пользователь является отправителем или получателем
-    user_messages = Message.objects.filter(
-        Q(sender=request.user) | Q(receiver=request.user)
-    ).order_by('-created_at')
+    if not request.user.is_authenticated:
+        return redirect('login')
     
-    return render(request, 'items/my_messages.html', {'messages': user_messages})
+    # Получаем все товары, у которых есть сообщения с участием текущего пользователя
+    items = Item.objects.filter(
+        messages__sender=request.user
+    ).distinct() | Item.objects.filter(
+        messages__receiver=request.user
+    ).distinct()
+    
+    items_with_conversations = []
+    for item in items:
+        # Получаем последнее сообщение
+        last_message = item.messages.filter(
+            Q(sender=request.user) | Q(receiver=request.user)
+        ).order_by('-created_at').first()
+        
+        # Определяем собеседника
+        if request.user == item.owner:
+            # Если текущий пользователь - владелец, ищем последнее сообщение от покупателя
+            conversation_with = item.messages.exclude(sender=request.user).order_by('-created_at').first().sender
+        else:
+            # Если текущий пользователь - покупатель, собеседник - владелец товара
+            conversation_with = item.owner
+        
+        # Проверяем, прочитано ли сообщение
+        is_read = last_message.is_read if last_message else True
+        
+        items_with_conversations.append({
+            'item': item,
+            'conversation_with': conversation_with,
+            'last_message': last_message,
+            'is_read': is_read
+        })
+    
+    return render(request, 'items/my_messages.html', {
+        'items_with_conversations': items_with_conversations
+    })
 
 def signup(request):
     if request.method == 'POST':
@@ -156,3 +222,9 @@ def toggle_airhall(request, pk):
         messages.success(request, f'Item {"marked as in" if item.is_in_airhall else "removed from"} Airhall')
         return redirect('item_detail', pk=pk)
     return redirect('item_detail', pk=pk)
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def user_list(request):
+    users = User.objects.all().order_by('username')
+    return render(request, 'items/user_list.html', {'users': users})

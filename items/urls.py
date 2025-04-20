@@ -10,4 +10,5 @@ urlpatterns = [
     path('my-items/', views.my_items, name='my_items'),
     path('item/<int:pk>/mark-sold/', views.mark_sold, name='mark_sold'),
     path('my-messages/', views.my_messages, name='my_messages'),
+    path('users/', views.user_list, name='user_list'),
 ] 

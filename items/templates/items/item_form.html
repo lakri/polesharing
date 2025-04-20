@@ -1,24 +1,38 @@
 {% extends 'items/base.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}{% if form.instance.pk %}Edit Item{% else %}New Item{% endif %} - PoleSharing{% endblock %}
+{% block title %}{% if form.instance.pk %}Edit Item{% else %}Add New Item{% endif %} - PoleSharing{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">{% if form.instance.pk %}Edit Item{% else %}New Item{% endif %}</h5>
-            </div>
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">{% if form.instance.pk %}Update{% else %}Create{% endif %} Item</button>
-                        <a href="{% if form.instance.pk %}{% url 'item_detail' form.instance.pk %}{% else %}{% url 'item_list' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
-                    </div>
-                </form>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="card-title mb-0">
+                        {% if form.instance.pk %}
+                            Edit Item
+                        {% else %}
+                            Add New Item
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-dark">
+                                {% if form.instance.pk %}
+                                    Update Item
+                                {% else %}
+                                    Add Item
+                                {% endif %}
+                            </button>
+                            <a href="{% if form.instance.pk %}{% url 'item_detail' form.instance.pk %}{% else %}{% url 'item_list' %}{% endif %}" class="btn btn-outline-dark">Cancel</a>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
