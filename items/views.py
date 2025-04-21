@@ -4,8 +4,8 @@ from django.contrib import messages
 from django.db.models import Q, F
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Item, Message
-from .forms import ItemForm, MessageForm, SignUpForm
+from .models import Item, Message, UserProfile
+from .forms import ItemForm, MessageForm, SignUpForm, UserStatusForm
 from django.contrib.auth import login
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .analytics import (
@@ -251,7 +251,25 @@ def toggle_airhall(request, pk):
 @user_passes_test(lambda u: u.is_superuser)
 def user_list(request):
     users = User.objects.all().order_by('username')
-    return render(request, 'items/user_list.html', {'users': users})
+    
+    # Create UserProfile for users who don't have one
+    for user in users:
+        UserProfile.objects.get_or_create(user=user)
+    
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        if user_id:
+            user = get_object_or_404(User, id=user_id)
+            form = UserStatusForm(request.POST, instance=user.profile)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f'Status updated for {user.username}')
+                return redirect('user_list')
+    
+    return render(request, 'items/user_list.html', {
+        'users': users,
+        'status_form': UserStatusForm()
+    })
 
 def send_message(request, pk):
     item = get_object_or_404(Item, pk=pk)

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Item, Message
+from .models import Item, Message, UserProfile
 from PIL import Image
 import pillow_heif
 import os
@@ -232,4 +232,12 @@ class MessageForm(forms.ModelForm):
             
             return image
         except Exception as e:
-            raise forms.ValidationError(f'Error processing image: {str(e)}') 
+            raise forms.ValidationError(f'Error processing image: {str(e)}')
+
+class UserStatusForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ['status']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-control'})
+        } 

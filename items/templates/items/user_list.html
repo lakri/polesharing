@@ -1,50 +1,66 @@
 {% extends 'items/base.html' %}
+{% load crispy_forms_tags %}
 
 {% block title %}Users - PoleSharing{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-users fa-sm"></i> Users</h2>
-    </div>
+    <h2 class="mb-4"><i class="fas fa-users fa-sm"></i> Users</h2>
     
-    {% if users %}
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Date Joined</th>
-                        <th>Last Login</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td>{{ user.username }}</td>
-                        <td>{{ user.email }}</td>
-                        <td>{{ user.date_joined|date:"d.m.Y H:i" }}</td>
-                        <td>{{ user.last_login|date:"d.m.Y H:i" }}</td>
-                        <td>
-                            {% if user.is_superuser %}
-                                <span class="badge bg-dark">Admin</span>
-                            {% elif user.is_staff %}
-                                <span class="badge bg-secondary">Staff</span>
-                            {% else %}
-                                <span class="badge bg-light text-dark">User</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <div class="alert alert-secondary">
-            <p class="mb-0">No users found.</p>
-        </div>
-    {% endif %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <span class="badge {% if user.profile.status == 'admin' %}bg-danger
+                                         {% elif user.profile.status == 'advanced' %}bg-warning
+                                         {% else %}bg-secondary{% endif %}">
+                            {{ user.profile.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#statusModal{{ user.id }}">
+                            <i class="fas fa-edit"></i> Change Status
+                        </button>
+                    </td>
+                </tr>
+                
+                <!-- Status Modal -->
+                <div class="modal fade" id="statusModal{{ user.id }}" tabindex="-1" aria-labelledby="statusModalLabel{{ user.id }}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="statusModalLabel{{ user.id }}">Change Status for {{ user.username }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <div class="modal-body">
+                                    {{ status_form|crispy }}
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-dark">Save changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %} 
