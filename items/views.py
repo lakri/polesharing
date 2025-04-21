@@ -44,47 +44,9 @@ def item_create(request):
     return render(request, 'items/item_form.html', {'form': form})
 
 @login_required
-def item_reserve(request, pk):
-    item = get_object_or_404(Item, pk=pk)
-    
-    if item.is_reserved:
-        messages.error(request, 'Этот товар уже забронирован!')
-        return redirect('item_list')
-    
-    if request.method == 'POST':
-        reservation = Reservation(item=item, user=request.user)
-        reservation.save()
-        item.is_reserved = True
-        item.save()
-        messages.success(request, 'Товар успешно забронирован на 24 часа!')
-        return redirect('item_list')
-    
-    return render(request, 'items/reserve_confirm.html', {'item': item})
-
-@login_required
 def my_items(request):
     items = Item.objects.filter(owner=request.user).order_by('-created_at')
     return render(request, 'items/my_items.html', {'items': items})
-
-@login_required
-def my_reservations(request):
-    reservations = Reservation.objects.filter(user=request.user)
-    return render(request, 'items/my_reservations.html', {'reservations': reservations})
-
-@login_required
-def cancel_reservation(request, pk):
-    reservation = get_object_or_404(Reservation, pk=pk, user=request.user)
-    item = reservation.item
-    
-    if not reservation.is_expired():
-        item.is_reserved = False
-        item.save()
-        reservation.delete()
-        messages.success(request, 'Бронирование успешно отменено!')
-    else:
-        messages.error(request, 'Бронирование уже истекло!')
-    
-    return redirect('my_reservations')
 
 @login_required
 def mark_sold(request, pk):
@@ -105,29 +67,42 @@ def item_detail(request, pk):
     item.increment_views()
     track_item_view(item, request.user)
     
+    # Инициализируем переменные по умолчанию
+    message_list = None
+    conversations = None
+    
     # Получаем сообщения только для текущего пользователя
     if request.user.is_authenticated:
-        # Определяем собеседника
         if request.user == item.owner:
-            # Если текущий пользователь - владелец, показываем сообщения только с последним покупателем
-            last_buyer_message = Message.objects.filter(item=item).exclude(sender=request.user).order_by('-created_at').first()
-            if last_buyer_message:
-                message_list = Message.objects.filter(
-                    Q(sender=request.user, receiver=last_buyer_message.sender) |
-                    Q(sender=last_buyer_message.sender, receiver=request.user),
+            # Для продавца - получаем список всех покупателей, с которыми есть переписка
+            buyers = User.objects.filter(
+                Q(sent_messages__item=item) | Q(received_messages__item=item)
+            ).exclude(id=request.user.id).distinct()
+            
+            conversations = []
+            for buyer in buyers:
+                buyer_messages = Message.objects.filter(
+                    Q(sender=request.user, receiver=buyer) |
+                    Q(sender=buyer, receiver=request.user),
                     item=item
                 ).order_by('created_at')
-            else:
-                message_list = None
+                
+                last_message = buyer_messages.last()
+                has_unread = buyer_messages.filter(receiver=request.user, is_read=False).exists()
+                
+                conversations.append({
+                    'buyer': buyer,
+                    'messages': buyer_messages,
+                    'last_message': last_message,
+                    'has_unread': has_unread
+                })
         else:
-            # Если текущий пользователь - покупатель, показываем сообщения только с владельцем
+            # Для покупателя - показываем сообщения только с владельцем
             message_list = Message.objects.filter(
                 Q(sender=request.user, receiver=item.owner) |
                 Q(sender=item.owner, receiver=request.user),
                 item=item
             ).order_by('created_at')
-    else:
-        message_list = None
     
     if request.method == 'POST':
         form = MessageForm(request.POST, request.FILES)
@@ -138,10 +113,13 @@ def item_detail(request, pk):
             
             # Определяем получателя сообщения
             if request.user == item.owner:
-                # Если отправитель - владелец, получатель - последний отправитель
-                last_message = Message.objects.filter(item=item).exclude(sender=request.user).last()
-                if last_message:
-                    message.receiver = last_message.sender
+                # Если отправитель - владелец, получатель - выбранный покупатель
+                buyer_id = request.POST.get('buyer_id')
+                if buyer_id:
+                    message.receiver = get_object_or_404(User, id=buyer_id)
+                else:
+                    messages.error(request, 'Please select a buyer to send message to')
+                    return redirect('item_detail', pk=pk)
             else:
                 # Если отправитель - покупатель, получатель - владелец
                 message.receiver = item.owner
@@ -164,7 +142,9 @@ def item_detail(request, pk):
     return render(request, 'items/item_detail.html', {
         'item': item,
         'messages': message_list,
-        'form': form
+        'conversations': conversations,
+        'form': form,
+        'is_seller': request.user == item.owner
     })
 
 @login_required
@@ -181,28 +161,11 @@ def my_messages(request):
     
     items_with_conversations = []
     for item in items:
-        # Определяем собеседника
         if request.user == item.owner:
-            # Если текущий пользователь - владелец, ищем последнее сообщение от покупателя
-            last_buyer_message = item.messages.exclude(sender=request.user).order_by('-created_at').first()
-            if last_buyer_message:
-                conversation_with = last_buyer_message.sender
-                # Получаем сообщения только с этим покупателем
-                messages = item.messages.filter(
-                    Q(sender=request.user, receiver=conversation_with) |
-                    Q(sender=conversation_with, receiver=request.user)
-                )
-                last_message = messages.order_by('-created_at').first()
-                has_unread = messages.filter(receiver=request.user, is_read=False).exists()
-                
-                items_with_conversations.append({
-                    'item': item,
-                    'conversation_with': conversation_with,
-                    'last_message': last_message,
-                    'has_unread': has_unread
-                })
+            # Для продавца - пропускаем, так как он будет видеть все чаты в карточке товара
+            continue
         else:
-            # Если текущий пользователь - покупатель, показываем только сообщения с владельцем
+            # Для покупателя - показываем только сообщения с владельцем
             messages = item.messages.filter(
                 Q(sender=request.user, receiver=item.owner) |
                 Q(sender=item.owner, receiver=request.user)
@@ -218,7 +181,8 @@ def my_messages(request):
             })
     
     return render(request, 'items/my_messages.html', {
-        'items_with_conversations': items_with_conversations
+        'items_with_conversations': items_with_conversations,
+        'is_seller': False  # В шаблоне будем использовать это для отображения соответствующего интерфейса
     })
 
 def signup(request):

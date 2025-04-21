@@ -37,15 +37,7 @@
                         <div class="mt-3">
                             <div class="alert alert-secondary">
                                 <p class="mb-1"><strong>Conversation with:</strong></p>
-                                {% if conversation.item.owner == request.user %}
-                                    {% if conversation.conversation_with %}
-                                        <p class="mb-0"><i class="fas fa-user fa-sm"></i> {{ conversation.conversation_with.username }}</p>
-                                    {% else %}
-                                        <p class="mb-0"><i class="fas fa-user fa-sm"></i> No messages yet</p>
-                                    {% endif %}
-                                {% else %}
-                                    <p class="mb-0"><i class="fas fa-user fa-sm"></i> {{ conversation.item.owner.username }}</p>
-                                {% endif %}
+                                <p class="mb-0"><i class="fas fa-user fa-sm"></i> {{ conversation.item.owner.username }}</p>
                                 {% if conversation.last_message %}
                                     <small class="text-muted">Last message: {{ conversation.last_message.created_at|date:"d.m.Y H:i" }}</small>
                                 {% else %}

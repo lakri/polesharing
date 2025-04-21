@@ -1,0 +1,74 @@
+{% extends 'items/base.html' %}
+{% load static %}
+
+{% block title %}Чаты - {{ item.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="card-title mb-0">Чаты покупателей</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for chat in chats %}
+                    <a href="{% url 'chat_detail' item.pk chat.pk %}" 
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if chat.messages.filter.is_read=False.count > 0 %}active{% endif %}">
+                        <div>
+                            <h6 class="mb-1">{{ chat.buyer.username }}</h6>
+                            <small class="text-muted">
+                                {% with last_message=chat.messages.last %}
+                                {% if last_message %}
+                                    {{ last_message.content|truncatechars:30 }}
+                                {% else %}
+                                    Нет сообщений
+                                {% endif %}
+                                {% endwith %}
+                            </small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill" id="unread-count-{{ chat.pk }}">
+                            {{ chat.messages.filter.is_read=False.count }}
+                        </span>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item">
+                        <p class="text-muted mb-0">Пока нет чатов с покупателями</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="card-title mb-0">{{ item.title }}</h5>
+                </div>
+                <div class="card-body">
+                    {% if not chats %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Выберите чат с покупателем слева</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Обновляем счетчик непрочитанных сообщений каждые 30 секунд
+setInterval(function() {
+    fetch('{% url "get_unread_count" %}')
+        .then(response => response.json())
+        .then(data => {
+            // Обновляем общий счетчик
+            document.getElementById('unread-count').textContent = data.unread_count;
+        });
+}, 30000);
+</script>
+{% endblock %}
+{% endblock %} 
