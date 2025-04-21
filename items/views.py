@@ -107,10 +107,25 @@ def item_detail(request, pk):
     
     # Получаем сообщения только для текущего пользователя
     if request.user.is_authenticated:
-        message_list = Message.objects.filter(
-            Q(sender=request.user) | Q(receiver=request.user),
-            item=item
-        ).order_by('created_at')
+        # Определяем собеседника
+        if request.user == item.owner:
+            # Если текущий пользователь - владелец, показываем сообщения только с последним покупателем
+            last_buyer_message = Message.objects.filter(item=item).exclude(sender=request.user).order_by('-created_at').first()
+            if last_buyer_message:
+                message_list = Message.objects.filter(
+                    Q(sender=request.user, receiver=last_buyer_message.sender) |
+                    Q(sender=last_buyer_message.sender, receiver=request.user),
+                    item=item
+                ).order_by('created_at')
+            else:
+                message_list = None
+        else:
+            # Если текущий пользователь - покупатель, показываем сообщения только с владельцем
+            message_list = Message.objects.filter(
+                Q(sender=request.user, receiver=item.owner) |
+                Q(sender=item.owner, receiver=request.user),
+                item=item
+            ).order_by('created_at')
     else:
         message_list = None
     
@@ -166,32 +181,41 @@ def my_messages(request):
     
     items_with_conversations = []
     for item in items:
-        # Получаем последнее сообщение
-        last_message = item.messages.filter(
-            Q(sender=request.user) | Q(receiver=request.user)
-        ).order_by('-created_at').first()
-        
         # Определяем собеседника
         if request.user == item.owner:
             # Если текущий пользователь - владелец, ищем последнее сообщение от покупателя
             last_buyer_message = item.messages.exclude(sender=request.user).order_by('-created_at').first()
-            conversation_with = last_buyer_message.sender if last_buyer_message else None
+            if last_buyer_message:
+                conversation_with = last_buyer_message.sender
+                # Получаем сообщения только с этим покупателем
+                messages = item.messages.filter(
+                    Q(sender=request.user, receiver=conversation_with) |
+                    Q(sender=conversation_with, receiver=request.user)
+                )
+                last_message = messages.order_by('-created_at').first()
+                has_unread = messages.filter(receiver=request.user, is_read=False).exists()
+                
+                items_with_conversations.append({
+                    'item': item,
+                    'conversation_with': conversation_with,
+                    'last_message': last_message,
+                    'has_unread': has_unread
+                })
         else:
-            # Если текущий пользователь - покупатель, собеседник - владелец товара
-            conversation_with = item.owner
-        
-        # Проверяем, есть ли непрочитанные сообщения
-        has_unread = item.messages.filter(
-            receiver=request.user,
-            is_read=False
-        ).exists()
-        
-        items_with_conversations.append({
-            'item': item,
-            'conversation_with': conversation_with,
-            'last_message': last_message,
-            'has_unread': has_unread
-        })
+            # Если текущий пользователь - покупатель, показываем только сообщения с владельцем
+            messages = item.messages.filter(
+                Q(sender=request.user, receiver=item.owner) |
+                Q(sender=item.owner, receiver=request.user)
+            )
+            last_message = messages.order_by('-created_at').first()
+            has_unread = messages.filter(receiver=request.user, is_read=False).exists()
+            
+            items_with_conversations.append({
+                'item': item,
+                'conversation_with': item.owner,
+                'last_message': last_message,
+                'has_unread': has_unread
+            })
     
     return render(request, 'items/my_messages.html', {
         'items_with_conversations': items_with_conversations
