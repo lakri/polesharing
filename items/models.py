@@ -27,6 +27,7 @@ class Item(models.Model):
     airhall_location = models.CharField(max_length=200, null=True, blank=True)
     category = models.CharField(max_length=100, choices=CATEGORY_CHOICES, default='other')
     views = models.PositiveIntegerField(default=0)
+    is_banned = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         # Если товар помечен как находящийся в airhall, проверяем наличие фотографии

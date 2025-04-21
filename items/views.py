@@ -33,7 +33,8 @@ def item_create(request):
         form = ItemForm(request.POST, request.FILES)
         if form.is_valid():
             item = form.save(commit=False)
-            item.seller = request.user
+            item.owner = request.user
+            item.is_banned = False
             item.save()
             # Отслеживаем создание товара
             track_item_creation(item)
@@ -88,7 +89,7 @@ def cancel_reservation(request, pk):
 @login_required
 def mark_sold(request, pk):
     item = get_object_or_404(Item, pk=pk)
-    if request.user == item.seller:
+    if request.user == item.owner:
         item.is_sold = True
         item.save()
         # Отслеживаем продажу товара
@@ -106,12 +107,12 @@ def item_detail(request, pk):
     
     # Получаем сообщения только для текущего пользователя
     if request.user.is_authenticated:
-        messages = Message.objects.filter(
+        message_list = Message.objects.filter(
             Q(sender=request.user) | Q(receiver=request.user),
             item=item
         ).order_by('created_at')
     else:
-        messages = None
+        message_list = None
     
     if request.method == 'POST':
         form = MessageForm(request.POST, request.FILES)
@@ -121,14 +122,14 @@ def item_detail(request, pk):
             message.sender = request.user
             
             # Определяем получателя сообщения
-            if request.user == item.seller:
-                # Если отправитель - продавец, получатель - последний отправитель
+            if request.user == item.owner:
+                # Если отправитель - владелец, получатель - последний отправитель
                 last_message = Message.objects.filter(item=item).exclude(sender=request.user).last()
                 if last_message:
                     message.receiver = last_message.sender
             else:
-                # Если отправитель - покупатель, получатель - продавец
-                message.receiver = item.seller
+                # Если отправитель - покупатель, получатель - владелец
+                message.receiver = item.owner
             
             message.save()
             
@@ -147,7 +148,7 @@ def item_detail(request, pk):
     
     return render(request, 'items/item_detail.html', {
         'item': item,
-        'messages': messages,
+        'messages': message_list,
         'form': form
     })
 
@@ -173,7 +174,8 @@ def my_messages(request):
         # Определяем собеседника
         if request.user == item.owner:
             # Если текущий пользователь - владелец, ищем последнее сообщение от покупателя
-            conversation_with = item.messages.exclude(sender=request.user).order_by('-created_at').first().sender
+            last_buyer_message = item.messages.exclude(sender=request.user).order_by('-created_at').first()
+            conversation_with = last_buyer_message.sender if last_buyer_message else None
         else:
             # Если текущий пользователь - покупатель, собеседник - владелец товара
             conversation_with = item.owner
@@ -273,14 +275,14 @@ def send_message(request, pk):
             message.sender = request.user
             
             # Определяем получателя сообщения
-            if request.user == item.seller:
-                # Если отправитель - продавец, получатель - последний отправитель
+            if request.user == item.owner:
+                # Если отправитель - владелец, получатель - последний отправитель
                 last_message = Message.objects.filter(item=item).exclude(sender=request.user).last()
                 if last_message:
                     message.receiver = last_message.sender
             else:
-                # Если отправитель - покупатель, получатель - продавец
-                message.receiver = item.seller
+                # Если отправитель - покупатель, получатель - владелец
+                message.receiver = item.owner
             
             message.save()
             
