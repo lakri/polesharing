@@ -25,10 +25,11 @@ class SignUpForm(UserCreationForm):
 class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
-        fields = ['title', 'description', 'image', 'price', 'is_in_airhall', 'airhall_image', 'airhall_location']
+        fields = ['title', 'description', 'image', 'price', 'category', 'is_in_airhall', 'airhall_image', 'airhall_location']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
             'is_in_airhall': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def clean(self):

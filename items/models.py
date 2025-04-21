@@ -8,10 +8,10 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 CATEGORY_CHOICES = [
-    ('clothes', 'Одежда'),
-    ('shoes', 'Обувь'),
-    ('grip', 'Средства для сцепления'),
-    ('other', 'Другое')
+    ('clothes', 'Clothes'),
+    ('shoes', 'Shoes'),
+    ('grip', 'Grip Aids'),
+    ('other', 'Other')
 ]
 
 class Item(models.Model):

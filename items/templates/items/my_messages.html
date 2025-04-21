@@ -27,6 +27,11 @@
                     <div class="card-body">
                         <p class="card-text">{{ conversation.item.description|truncatewords:20 }}</p>
                         <p class="card-text"><strong><i class="fas fa-tag fa-sm"></i> Price:</strong> {{ conversation.item.price }} ₾</p>
+                        <p class="card-text">
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-tag fa-sm"></i> {{ conversation.item.get_category_display }}
+                            </span>
+                        </p>
                         <p class="card-text"><small class="text-muted"><i class="fas fa-user fa-sm"></i> Seller: {{ conversation.item.owner.username }}</small></p>
                         
                         <div class="mt-3">
