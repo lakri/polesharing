@@ -16,17 +16,19 @@ def track_event(user_id, event_type, event_properties=None):
         event_properties: Dictionary of additional properties for the event
     """
     try:
-        # Ensure user_id is a string and not empty
+        # Ensure user_id is a numeric string with minimum length
         if not user_id:
-            user_id = "anonymous"
-        user_id = str(user_id)
+            user_id = "1000000000"  # Default anonymous ID
+        else:
+            # Convert to string and pad with zeros if needed
+            user_id = str(abs(int(user_id))).zfill(10)
         
         # Create event data
         event_data = {
             "api_key": AMPLITUDE_API_KEY,
             "events": [{
                 "user_id": user_id,
-                "device_id": user_id,  # Add device_id to ensure proper identification
+                "device_id": "2000000000",  # Default device ID
                 "event_type": event_type,
                 "event_properties": event_properties or {},
                 "time": int(time.time() * 1000)  # Current time in milliseconds
@@ -52,17 +54,19 @@ def identify_user(user_id, user_properties):
         user_properties: Dictionary of user properties
     """
     try:
-        # Ensure user_id is a string and not empty
+        # Ensure user_id is a numeric string with minimum length
         if not user_id:
-            user_id = "anonymous"
-        user_id = str(user_id)
+            user_id = "1000000000"  # Default anonymous ID
+        else:
+            # Convert to string and pad with zeros if needed
+            user_id = str(abs(int(user_id))).zfill(10)
         
         # For user identification, we'll use the same endpoint but with a special event type
         event_data = {
             "api_key": AMPLITUDE_API_KEY,
             "events": [{
                 "user_id": user_id,
-                "device_id": user_id,  # Add device_id to ensure proper identification
+                "device_id": "2000000000",  # Default device ID
                 "event_type": "$identify",
                 "user_properties": user_properties,
                 "time": int(time.time() * 1000)  # Current time in milliseconds
