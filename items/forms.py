@@ -7,16 +7,29 @@ import pillow_heif
 import os
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import magic
+from django.core.exceptions import ValidationError
+from django.conf import settings
 from django_recaptcha.fields import ReCaptchaField
 from django_recaptcha.widgets import ReCaptchaV2Checkbox
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(required=True)
+    registration_code = forms.CharField(
+        required=True,
+        label="Registration Code",
+        help_text="Please enter the registration code to create an account"
+    )
     captcha = ReCaptchaField(widget=ReCaptchaV2Checkbox)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2', 'captcha')
+        fields = ('username', 'email', 'password1', 'password2', 'registration_code', 'captcha')
+
+    def clean_registration_code(self):
+        code = self.cleaned_data.get('registration_code')
+        if code != os.getenv('REGISTRATION_CODE'):
+            raise ValidationError("Invalid registration code")
+        return code
 
     def save(self, commit=True):
         user = super().save(commit=False)
