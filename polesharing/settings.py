@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'items',
     'crispy_forms',
     'crispy_bootstrap5',
+    'captcha',
 ]
 
 MIDDLEWARE = [
@@ -62,7 +63,7 @@ ROOT_URLCONF = 'polesharing.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'items/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -168,6 +169,11 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # Amplitude Analytics
 AMPLITUDE_API_KEY = os.getenv('AMPLITUDE_API_KEY', 'your-api-key-here')
+
+# reCAPTCHA settings
+RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY', 'your-public-key')
+RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY', 'your-private-key')
+RECAPTCHA_REQUIRED_SCORE = 0.85
 
 # Try to import local settings
 try:

@@ -9,4 +9,5 @@ dj-database-url==2.1.0
 psycopg2-binary==2.9.9
 amplitude-python==1.0.0
 python-dotenv==1.1.0
-requests==2.31.0 
+requests==2.31.0
+django-recaptcha==4.0.0 

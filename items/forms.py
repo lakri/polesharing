@@ -7,13 +7,16 @@ import pillow_heif
 import os
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import magic
+from django_recaptcha.fields import ReCaptchaField
+from django_recaptcha.widgets import ReCaptchaV2Checkbox
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(required=True)
+    captcha = ReCaptchaField(widget=ReCaptchaV2Checkbox)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2')
+        fields = ('username', 'email', 'password1', 'password2', 'captcha')
 
     def save(self, commit=True):
         user = super().save(commit=False)
