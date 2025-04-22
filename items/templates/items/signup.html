@@ -14,8 +14,14 @@
                 <div class="card-body">
                     <form method="post">
                         {% csrf_token %}
-                        {% crispy form %}
+                        {{ form|crispy }}
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="submit" class="btn btn-dark">Sign Up</button>
+                        </div>
                     </form>
+                </div>
+                <div class="card-footer text-center">
+                    <p class="mb-0">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
                 </div>
             </div>
         </div>

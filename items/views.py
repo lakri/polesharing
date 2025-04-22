@@ -16,8 +16,10 @@ from .analytics import (
     track_airhall_status,
     track_item_view,
     track_message_sent,
-    track_category_stats
+    track_category_stats,
+    track_user_status_change
 )
+from django.http import JsonResponse
 
 def item_list(request):
     items = Item.objects.filter(is_sold=False).order_by('-created_at')
@@ -322,3 +324,55 @@ def remove_from_airhall(request, pk):
         track_airhall_status(item, False)
         messages.success(request, 'Item removed from airhall!')
     return redirect('item_detail', pk=pk)
+
+@login_required
+def create_item(request):
+    if request.method == 'POST':
+        form = ItemForm(request.POST, request.FILES)
+        if form.is_valid():
+            item = form.save(commit=False)
+            item.owner = request.user
+            item.save()
+            track_item_creation(item)  # Track item creation
+            messages.success(request, 'Item created successfully!')
+            return redirect('item_detail', item_id=item.id)
+    else:
+        form = ItemForm()
+    return render(request, 'items/create_item.html', {'form': form})
+
+@login_required
+def mark_as_sold(request, item_id):
+    item = get_object_or_404(Item, id=item_id)
+    if request.user == item.owner:
+        item.is_sold = True
+        item.save()
+        track_item_sold(item)  # Track item sold
+        messages.success(request, 'Item marked as sold!')
+    return redirect('item_detail', item_id=item.id)
+
+@login_required
+def update_airhall_status(request, item_id):
+    item = get_object_or_404(Item, id=item_id)
+    if request.user == item.owner:
+        is_in_airhall = request.POST.get('is_in_airhall') == 'true'
+        item.is_in_airhall = is_in_airhall
+        item.save()
+        track_airhall_status(item, is_in_airhall)  # Track airhall status change
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'}, status=403)
+
+def register(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Create user profile
+            UserProfile.objects.create(user=user)
+            # Track user registration
+            track_user_registration(user)
+            login(request, user)
+            messages.success(request, 'Registration successful!')
+            return redirect('home')
+    else:
+        form = UserCreationForm()
+    return render(request, 'registration/register.html', {'form': form})

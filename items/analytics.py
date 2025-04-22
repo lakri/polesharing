@@ -3,136 +3,132 @@ import requests
 from datetime import datetime, timezone
 from django.conf import settings
 from django.db.models import Avg, Count, Q
-from .models import Item, Message
+from .models import Item, Message, UserProfile
 from django.utils import timezone
-
-def track_event(event_name, properties=None, user_id=None):
-    """Send event to Amplitude"""
-    api_key = getattr(settings, 'AMPLITUDE_API_KEY', None)
-    if not api_key or api_key == 'YOUR_API_KEY_HERE':
-        # If API key is not configured, just log the event
-        print(f"Analytics event (not sent): {event_name}")
-        return
-
-    amplitude_url = "https://api2.amplitude.com/2/httpapi"
-    
-    data = {
-        "api_key": api_key,
-        "events": [{
-            "user_id": str(user_id) if user_id else None,
-            "event_type": event_name,
-            "event_properties": properties or {},
-            "time": int(time.time() * 1000)
-        }]
-    }
-    
-    try:
-        requests.post(amplitude_url, json=data)
-    except Exception as e:
-        print(f"Error sending analytics event: {e}")
+from .amplitude_config import track_event, identify_user
 
 def track_user_registration(user):
-    """Track user registration"""
-    track_event('user_registered', {
-        'username': user.username,
-        'registration_date': user.date_joined.isoformat(),
-        'email': user.email
-    }, user.id)
+    """Track when a new user registers"""
+    identify_user(
+        user.id,
+        {
+            'username': user.username,
+            'email': user.email,
+            'date_joined': user.date_joined.isoformat(),
+            'status': user.profile.status if hasattr(user, 'profile') else 'user'
+        }
+    )
+    track_event(
+        user.id,
+        'user_registered',
+        {
+            'username': user.username,
+            'email': user.email
+        }
+    )
 
 def track_item_creation(item):
-    """Track item creation"""
-    track_event('item_created', {
-        'item_id': item.id,
-        'title': item.title,
-        'price': str(item.price),
-        'category': item.category,
-        'creation_date': item.created_at.isoformat(),
-        'seller_id': item.owner.id,
-        'seller_username': item.owner.username
-    }, item.owner.id)
-
-def track_item_sold(item):
-    """Track item sale"""
-    try:
-        # Calculate time to sale
-        time_to_sell = timezone.now() - item.created_at
-        
-        # Send event to Amplitude
-        track_event(
-            event_name='item_sold',
-            user_id=str(item.owner.id),
-            properties={
-                'item_id': item.id,
-                'title': item.title,
-                'price': float(item.price),
-                'category': item.category,
-                'time_to_sell_days': time_to_sell.days,
-                'time_to_sell_hours': time_to_sell.seconds // 3600,
-                'is_in_airhall': item.is_in_airhall,
-                'has_airhall_image': bool(item.airhall_image),
-                'has_airhall_location': bool(item.airhall_location)
-            }
-        )
-    except Exception as e:
-        print(f"Error tracking item sold: {str(e)}")
-
-def track_first_message(item, message):
-    """Track first message for an item"""
-    creation_date = item.created_at
-    message_date = message.created_at
-    time_to_first_message = (message_date - creation_date).total_seconds() / 3600  # in hours
-    
-    track_event('first_message_received', {
-        'item_id': item.id,
-        'title': item.title,
-        'time_to_first_message_hours': time_to_first_message,
-        'message_sender_id': message.sender.id,
-        'message_sender_username': message.sender.username,
-        'seller_id': item.owner.id,
-        'seller_username': item.owner.username
-    }, item.owner.id)
-
-def track_airhall_status(item, is_in_airhall):
-    """Track airhall status change"""
-    track_event('airhall_status_changed', {
-        'item_id': item.id,
-        'title': item.title,
-        'is_in_airhall': is_in_airhall,
-        'change_date': datetime.now().isoformat(),
-        'seller_id': item.owner.id,
-        'seller_username': item.owner.username
-    }, item.owner.id)
+    """Track when a new item is created"""
+    track_event(
+        item.owner.id,
+        'item_created',
+        {
+            'item_id': item.id,
+            'title': item.title,
+            'price': float(item.price),
+            'category': item.category,
+            'is_in_airhall': item.is_in_airhall
+        }
+    )
 
 def track_item_view(item, user):
-    """Track item view"""
-    track_event('item_viewed', {
-        'item_id': item.id,
-        'title': item.title,
-        'price': str(item.price),
-        'category': item.category,
-        'seller_id': item.owner.id,
-        'seller_username': item.owner.username,
-        'viewer_id': user.id if user.is_authenticated else None,
-        'viewer_username': user.username if user.is_authenticated else 'anonymous'
-    }, user.id if user.is_authenticated else None)
+    """Track when an item is viewed"""
+    track_event(
+        user.id,
+        'item_viewed',
+        {
+            'item_id': item.id,
+            'owner_id': item.owner.id,
+            'is_owner': user == item.owner,
+            'price': float(item.price),
+            'category': item.category,
+            'is_in_airhall': item.is_in_airhall
+        }
+    )
+
+def track_item_sold(item):
+    """Track when an item is marked as sold"""
+    track_event(
+        item.owner.id,
+        'item_sold',
+        {
+            'item_id': item.id,
+            'title': item.title,
+            'price': float(item.price),
+            'category': item.category
+        }
+    )
 
 def track_message_sent(message):
-    """
-    Track when a message is sent
-    """
-    properties = {
-        'item_id': message.item.id,
-        'item_title': message.item.title,
-        'sender_id': message.sender.id,
-        'receiver_id': message.receiver.id if message.receiver else None,
-        'message_length': len(message.content),
-        'has_image': bool(message.image)
-    }
-    
-    track_event('message_sent', properties, message.sender.id)
+    """Track when a message is sent"""
+    track_event(
+        message.sender.id,
+        'message_sent',
+        {
+            'message_id': message.id,
+            'item_id': message.item.id,
+            'receiver_id': message.receiver.id,
+            'has_image': bool(message.image),
+            'is_system': message.is_system
+        }
+    )
+
+def track_first_message(item, message):
+    """Track when the first message is sent about an item"""
+    track_event(
+        message.sender.id,
+        'first_message_sent',
+        {
+            'item_id': item.id,
+            'owner_id': item.owner.id,
+            'is_owner': message.sender == item.owner
+        }
+    )
+
+def track_airhall_status(item, is_in_airhall):
+    """Track when an item's airhall status changes"""
+    track_event(
+        item.owner.id,
+        'airhall_status_changed',
+        {
+            'item_id': item.id,
+            'is_in_airhall': is_in_airhall,
+            'location': item.airhall_location if is_in_airhall else None
+        }
+    )
+
+def track_user_status_change(user, old_status, new_status):
+    """Track when a user's status changes"""
+    track_event(
+        user.id,
+        'user_status_changed',
+        {
+            'old_status': old_status,
+            'new_status': new_status
+        }
+    )
+    identify_user(
+        user.id,
+        {
+            'status': new_status
+        }
+    )
 
 def track_category_stats():
     """Track category statistics"""
+    from .models import Item  # Import here to avoid circular import
+    from django.db.models import Count, Avg, Q
+    
     category_stats = Item.objects.values('category').annotate(
         total_items=Count('id'),
         avg_price=Avg('price'),

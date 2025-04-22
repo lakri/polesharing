@@ -32,6 +32,14 @@ class UserProfile(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+    def save(self, *args, **kwargs):
+        if self.pk:  # If the object already exists
+            old_status = UserProfile.objects.get(pk=self.pk).status
+            if old_status != self.status:
+                from .analytics import track_user_status_change  # Import here to avoid circular import
+                track_user_status_change(self.user, old_status, self.status)
+        super().save(*args, **kwargs)
+
 class Item(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
