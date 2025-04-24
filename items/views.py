@@ -258,6 +258,11 @@ def user_list(request):
     for user in users:
         UserProfile.objects.get_or_create(user=user)
     
+    # Add metrics for each user
+    for user in users:
+        user.sold_items_count = Item.objects.filter(owner=user, is_sold=True).count()
+        user.active_items_count = Item.objects.filter(owner=user, is_sold=False).count()
+    
     if request.method == 'POST':
         user_id = request.POST.get('user_id')
         if user_id:

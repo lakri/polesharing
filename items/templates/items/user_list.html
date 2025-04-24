@@ -14,6 +14,8 @@
                     <th>Username</th>
                     <th>Email</th>
                     <th>Status</th>
+                    <th>Sold Items</th>
+                    <th>Active Items</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -29,6 +31,8 @@
                             {{ user.profile.get_status_display }}
                         </span>
                     </td>
+                    <td>{{ user.sold_items_count }}</td>
+                    <td>{{ user.active_items_count }}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#statusModal{{ user.id }}">
                             <i class="fas fa-edit"></i> Change Status
