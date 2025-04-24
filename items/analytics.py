@@ -136,12 +136,19 @@ def track_category_stats():
         total_sold=Count('id', filter=Q(is_sold=True))
     )
     
+    # Use a system user ID for category stats
+    system_user_id = 0  # Using 0 as system user ID
+    
     for stat in category_stats:
-        track_event('category_stats', {
-            'category': stat['category'],
-            'total_items': stat['total_items'],
-            'avg_price': float(stat['avg_price']) if stat['avg_price'] else 0,
-            'total_views': stat['total_views'],
-            'total_sold': stat['total_sold'],
-            'conversion_rate': stat['total_sold'] / stat['total_views'] if stat['total_views'] > 0 else 0
-        }) 
+        track_event(
+            system_user_id,  # Use system user ID instead of string
+            'category_stats',
+            {
+                'category': stat['category'],
+                'total_items': stat['total_items'],
+                'avg_price': float(stat['avg_price']) if stat['avg_price'] else 0,
+                'total_views': stat['total_views'],
+                'total_sold': stat['total_sold'],
+                'conversion_rate': stat['total_sold'] / stat['total_views'] if stat['total_views'] > 0 else 0
+            }
+        ) 
